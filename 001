@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>霓虹雨躲避战 Neon Rain Dodger</title>
+  <style>
+    /* 全局基础样式，使用深色背景并突出电蓝色 */
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', 'PingFang SC', sans-serif;
+      background: radial-gradient(circle at top, #050510, #010106 60%, #000);
+      color: #66c7ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .game-wrapper {
+      width: min(640px, 100vw);
+      max-height: 100vh;
+      padding: 16px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 4vw, 32px);
+      text-align: center;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: #0af0ff;
+      text-shadow: 0 0 12px rgba(10, 240, 255, 0.8);
+    }
+
+    .hud {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px;
+      font-size: clamp(14px, 2.4vw, 18px);
+      text-align: center;
+      background: rgba(0, 10, 30, 0.4);
+      border: 1px solid rgba(30, 140, 255, 0.4);
+      border-radius: 12px;
+      padding: 8px;
+      box-shadow: 0 0 20px rgba(0, 120, 255, 0.2);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    button {
+      border: 1px solid #0af0ff;
+      background: rgba(5, 40, 80, 0.5);
+      color: #baf5ff;
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 14px;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 12px rgba(0, 180, 255, 0.6);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    canvas {
+      width: 100%;
+      height: auto;
+      max-height: calc(100vh - 220px);
+      background: linear-gradient(180deg, rgba(0, 20, 40, 0.7), rgba(0, 5, 15, 0.9));
+      border: 1px solid rgba(10, 180, 255, 0.2);
+      border-radius: 16px;
+      box-shadow: 0 0 20px rgba(10, 180, 255, 0.3);
+      touch-action: none;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      background: rgba(0, 0, 0, 0.6);
+      color: #baf5ff;
+      font-size: 18px;
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .overlay.visible {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .overlay span {
+      font-size: 32px;
+      font-weight: bold;
+      text-shadow: 0 0 8px rgba(10, 240, 255, 0.8);
+    }
+
+    .canvas-container {
+      position: relative;
+      width: 100%;
+    }
+
+    .tips {
+      font-size: 12px;
+      color: rgba(186, 245, 255, 0.7);
+      text-align: center;
+      max-width: 480px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-wrapper">
+    <h1>霓虹雨躲避战</h1>
+    <div class="hud">
+      <div>分数：<span id="score">0</span></div>
+      <div>最高分：<span id="highScore">0</span></div>
+      <div>难度等级：<span id="level">1</span></div>
+      <div>状态：<span id="status">待开始</span></div>
+    </div>
+    <div class="controls">
+      <button id="startBtn">开始 / 重开</button>
+      <button id="pauseBtn">暂停</button>
+      <button id="soundBtn">音效：开</button>
+    </div>
+    <div class="canvas-container" id="touchArea">
+      <canvas id="gameCanvas" width="640" height="960"></canvas>
+      <div class="overlay" id="overlay">
+        <span id="overlayTitle">霓虹雨躲避战</span>
+        <div id="overlayInfo">点击开始迎接霓虹风暴！</div>
+      </div>
+    </div>
+    <div class="tips">
+      键盘方向键或 WASD 控制移动，P 键暂停/继续。<br />
+      触屏设备：长按左半屏向左移动，右半屏向右移动。<br />
+      每 10 秒霓虹雨会更猛烈，小心别被击中！
+    </div>
+  </div>
+  <script>
+    // ====== 游戏基础变量与对象 ======
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const highScoreEl = document.getElementById('highScore');
+    const levelEl = document.getElementById('level');
+    const statusEl = document.getElementById('status');
+    const overlay = document.getElementById('overlay');
+    const overlayTitle = document.getElementById('overlayTitle');
+    const overlayInfo = document.getElementById('overlayInfo');
+    const startBtn = document.getElementById('startBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const soundBtn = document.getElementById('soundBtn');
+    const touchArea = document.getElementById('touchArea');
+
+    const highScoreKey = 'neon-rain-dodger-highscore';
+
+    const player = {
+      size: 36,
+      x: canvas.width / 2,
+      y: canvas.height - 120,
+      speed: 320,
+      color: '#0af0ff'
+    };
+
+    let obstacles = [];
+    const keys = {};
+    let running = false;
+    let paused = false;
+    let lastTime = 0;
+    let elapsed = 0; // 存活时间（秒）
+    let spawnTimer = 0;
+    const baseSpawnInterval = 1.2;
+    const baseObstacleSpeed = 220;
+    let animationId = null;
+
+    // 触控状态
+    let touchLeftActive = false;
+    let touchRightActive = false;
+
+    // 音效系统（使用 WebAudio API 生成简单哔声）
+    let audioEnabled = true;
+    let audioContext = null;
+
+    let highScore = Number(localStorage.getItem(highScoreKey) || 0);
+    highScoreEl.textContent = highScore;
+
+    function initAudio() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+    }
+
+    function playBeep(frequency = 440, duration = 0.15, type = 'sine', gainValue = 0.1) {
+      if (!audioEnabled) return;
+      initAudio();
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.type = type;
+      osc.frequency.value = frequency;
+      gain.gain.value = gainValue;
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start();
+      osc.stop(audioContext.currentTime + duration);
+    }
+
+    // ====== 游戏控制函数 ======
+    function showOverlay(title, info) {
+      overlayTitle.textContent = title;
+      overlayInfo.textContent = info;
+      overlay.classList.add('visible');
+    }
+
+    function hideOverlay() {
+      overlay.classList.remove('visible');
+    }
+
+    function prepareNewRun() {
+      player.x = canvas.width / 2;
+      player.y = canvas.height - 120;
+      obstacles = [];
+      elapsed = 0;
+      spawnTimer = 0;
+      lastTime = performance.now();
+      updateHUD();
+    }
+
+    function startGame() {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+      prepareNewRun();
+      initAudio();
+      running = true;
+      paused = false;
+      statusEl.textContent = '战斗中';
+      pauseBtn.textContent = '暂停';
+      hideOverlay();
+      playBeep(660, 0.2, 'sawtooth', 0.07);
+      animationId = requestAnimationFrame(loop);
+    }
+
+    function endGame() {
+      running = false;
+      paused = false;
+      pauseBtn.textContent = '暂停';
+      statusEl.textContent = '任务失败';
+      showOverlay('躲避失败', `存活 ${Math.floor(elapsed)} 秒，点击重新挑战！`);
+      if (Math.floor(elapsed) > highScore) {
+        highScore = Math.floor(elapsed);
+        localStorage.setItem(highScoreKey, highScore);
+        highScoreEl.textContent = highScore;
+      }
+      playBeep(180, 0.3, 'triangle', 0.12);
+    }
+
+    function togglePause() {
+      if (!running) return;
+      paused = !paused;
+      statusEl.textContent = paused ? '暂停' : '战斗中';
+      pauseBtn.textContent = paused ? '继续' : '暂停';
+      if (!paused) {
+        lastTime = performance.now();
+        animationId = requestAnimationFrame(loop);
+      }
+    }
+
+    function toggleSound() {
+      audioEnabled = !audioEnabled;
+      soundBtn.textContent = audioEnabled ? '音效：开' : '音效：关';
+      if (audioEnabled) {
+        playBeep(520, 0.12, 'square', 0.05);
+      }
+    }
+
+    function updateHUD() {
+      scoreEl.textContent = Math.floor(elapsed);
+      highScoreEl.textContent = highScore;
+      levelEl.textContent = Math.max(1, Math.floor(elapsed / 10) + 1);
+    }
+
+    function drawIdleScene() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, 'rgba(10, 20, 40, 0.95)');
+      gradient.addColorStop(1, 'rgba(0, 0, 10, 0.9)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = 'rgba(10, 180, 255, 0.15)';
+      for (let i = 0; i < 80; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const r = Math.random() * 2 + 0.5;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = player.color;
+      ctx.shadowColor = '#0af0ff';
+      ctx.shadowBlur = 20;
+      ctx.fillRect(player.x - player.size / 2, player.y - player.size / 2, player.size, player.size);
+      ctx.shadowBlur = 0;
+
+      ctx.fillStyle = 'rgba(10, 180, 255, 0.7)';
+      ctx.font = '24px "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('准备迎战霓虹风暴', canvas.width / 2, canvas.height / 2);
+    }
+
+    // ====== 游戏更新循环 ======
+    function loop(timestamp) {
+      if (!running || paused) {
+        animationId = null;
+        return;
+      }
+      const delta = Math.min((timestamp - lastTime) / 1000, 1 / 30); // 控制最大时间步，保持稳定
+      lastTime = timestamp;
+
+      update(delta);
+      render();
+      animationId = requestAnimationFrame(loop);
+    }
+
+    function update(delta) {
+      elapsed += delta;
+      updateHUD();
+
+      const level = Math.max(0, Math.floor(elapsed / 10));
+
+      // 玩家移动：键盘 + 触摸
+      const moveX = (keys['ArrowLeft'] || keys['KeyA'] || touchLeftActive ? -1 : 0) +
+                    (keys['ArrowRight'] || keys['KeyD'] || touchRightActive ? 1 : 0);
+      const moveY = (keys['ArrowUp'] || keys['KeyW'] ? -1 : 0) +
+                    (keys['ArrowDown'] || keys['KeyS'] ? 1 : 0);
+
+      const magnitude = Math.hypot(moveX, moveY) || 1; // 归一化斜向速度
+      player.x += (moveX / magnitude) * player.speed * delta;
+      player.y += (moveY / magnitude) * player.speed * delta;
+
+      const half = player.size / 2;
+      player.x = Math.max(half, Math.min(canvas.width - half, player.x));
+      player.y = Math.max(half, Math.min(canvas.height - half, player.y));
+
+      // 生成障碍物，随难度减少间隔并增加数量
+      const spawnInterval = Math.max(0.35, baseSpawnInterval - level * 0.1);
+      spawnTimer += delta;
+      while (spawnTimer >= spawnInterval) {
+        spawnTimer -= spawnInterval;
+        const count = 1 + Math.floor(level / 2);
+        for (let i = 0; i < count; i++) {
+          spawnObstacle(level);
+        }
+      }
+
+      // 更新障碍物
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const o = obstacles[i];
+        o.y += o.speed * delta;
+        if (o.y > canvas.height + 50) {
+          obstacles.splice(i, 1);
+          continue;
+        }
+        if (checkCollision(o)) {
+          endGame();
+          break;
+        }
+      }
+    }
+
+    function spawnObstacle(level) {
+      const width = 40 + Math.random() * 30 + level * 4;
+      const height = 30 + Math.random() * 40 + level * 5;
+      const x = Math.random() * (canvas.width - width);
+      const speed = baseObstacleSpeed + level * 40 + Math.random() * (40 + level * 20);
+      obstacles.push({
+        x,
+        y: -height,
+        width,
+        height,
+        speed,
+        opacity: 0.4 + Math.random() * 0.4
+      });
+    }
+
+    function checkCollision(obstacle) {
+      const half = player.size / 2;
+      const px = player.x - half;
+      const py = player.y - half;
+      const pw = player.size;
+      const ph = player.size;
+      return px < obstacle.x + obstacle.width &&
+             px + pw > obstacle.x &&
+             py < obstacle.y + obstacle.height &&
+             py + ph > obstacle.y;
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, 'rgba(10, 20, 40, 0.95)');
+      gradient.addColorStop(1, 'rgba(0, 0, 10, 0.9)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 绘制霓虹雨障碍
+      obstacles.forEach((o) => {
+        ctx.fillStyle = `rgba(10, 200, 255, ${o.opacity})`;
+        ctx.fillRect(o.x, o.y, o.width, o.height);
+        ctx.strokeStyle = 'rgba(10, 250, 255, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(o.x, o.y, o.width, o.height);
+      });
+
+      // 绘制玩家方块
+      ctx.fillStyle = player.color;
+      ctx.shadowColor = '#0af0ff';
+      ctx.shadowBlur = 20;
+      ctx.fillRect(player.x - player.size / 2, player.y - player.size / 2, player.size, player.size);
+      ctx.shadowBlur = 0;
+
+      // 底部发光线，增强速度感
+      ctx.strokeStyle = 'rgba(10, 120, 255, 0.2)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, player.y + player.size / 2 + 20);
+      ctx.lineTo(canvas.width, player.y + player.size / 2 + 20);
+      ctx.stroke();
+    }
+
+    // ====== 输入与事件监听 ======
+    document.addEventListener('keydown', (e) => {
+      keys[e.code] = true;
+      if (e.code === 'KeyP') {
+        togglePause();
+      }
+      if (e.code === 'Space' && !running) {
+        startGame();
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      keys[e.code] = false;
+    });
+
+    startBtn.addEventListener('click', () => {
+      if (running) {
+        running = false;
+      }
+      startGame();
+    });
+
+    pauseBtn.addEventListener('click', () => {
+      togglePause();
+    });
+
+    soundBtn.addEventListener('click', () => {
+      toggleSound();
+    });
+
+    overlay.addEventListener('click', () => {
+      if (!running) {
+        startGame();
+      }
+    });
+
+    // 触摸控制：左右半区分别移动
+    function updateTouchStates(touches) {
+      touchLeftActive = false;
+      touchRightActive = false;
+      const rect = canvas.getBoundingClientRect();
+      const mid = rect.left + rect.width / 2;
+      for (const touch of touches) {
+        if (touch.clientX < mid) {
+          touchLeftActive = true;
+        } else {
+          touchRightActive = true;
+        }
+      }
+    }
+
+    touchArea.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      initAudio();
+      updateTouchStates(e.touches);
+    }, { passive: false });
+
+    touchArea.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      updateTouchStates(e.touches);
+    }, { passive: false });
+
+    touchArea.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      updateTouchStates(e.touches);
+    }, { passive: false });
+
+    touchArea.addEventListener('touchcancel', (e) => {
+      e.preventDefault();
+      updateTouchStates(e.touches);
+    }, { passive: false });
+
+    // 初始静态界面
+    statusEl.textContent = '待开始';
+    drawIdleScene();
+    showOverlay('霓虹雨躲避战', '点击开始迎接霓虹风暴！');
+  </script>
+</body>
+</html>
