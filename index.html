@@ -1,97 +1,72 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>霓虹雨躲避战 Neon Rain Dodger</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deadline Dash</title>
   <style>
-    /* 全局基础样式，使用深色背景并突出电蓝色 */
+    :root {
+      --bg: #0f1226;
+      --panel: #171b35;
+      --accent: #7dd3fc;
+      --text: #e7ecff;
+      --good: #34d399;
+      --warn: #fbbf24;
+      --bad: #f87171;
+    }
+
+    * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      font-family: 'Segoe UI', 'PingFang SC', sans-serif;
-      background: radial-gradient(circle at top, #050510, #010106 60%, #000);
-      color: #66c7ff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       min-height: 100vh;
-    }
-
-    .game-wrapper {
-      width: min(640px, 100vw);
-      max-height: 100vh;
+      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+      background: radial-gradient(circle at top, #1f2a54 0%, var(--bg) 58%);
+      color: var(--text);
+      display: grid;
+      place-items: center;
       padding: 16px;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
     }
 
-    h1 {
-      margin: 0;
-      font-size: clamp(24px, 4vw, 32px);
-      text-align: center;
-      letter-spacing: 4px;
-      text-transform: uppercase;
-      color: #0af0ff;
-      text-shadow: 0 0 12px rgba(10, 240, 255, 0.8);
+    .game-shell {
+      width: min(920px, 96vw);
+      background: rgba(8, 12, 28, 0.72);
+      border: 1px solid rgba(125, 211, 252, 0.25);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
     }
 
     .hud {
-      width: 100%;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 8px;
-      font-size: clamp(14px, 2.4vw, 18px);
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 10px;
+      padding: 10px;
       text-align: center;
-      background: rgba(0, 10, 30, 0.4);
-      border: 1px solid rgba(30, 140, 255, 0.4);
-      border-radius: 12px;
-      padding: 8px;
-      box-shadow: 0 0 20px rgba(0, 120, 255, 0.2);
+      font-weight: 600;
     }
 
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center;
-    }
+    #status { color: var(--accent); }
 
-    button {
-      border: 1px solid #0af0ff;
-      background: rgba(5, 40, 80, 0.5);
-      color: #baf5ff;
-      padding: 8px 16px;
-      border-radius: 999px;
-      font-size: 14px;
-      letter-spacing: 1px;
-      cursor: pointer;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 0 12px rgba(0, 180, 255, 0.6);
-    }
-
-    button:active {
-      transform: translateY(0);
-    }
+    .canvas-wrap { position: relative; }
 
     canvas {
       width: 100%;
       height: auto;
-      max-height: calc(100vh - 220px);
-      background: linear-gradient(180deg, rgba(0, 20, 40, 0.7), rgba(0, 5, 15, 0.9));
-      border: 1px solid rgba(10, 180, 255, 0.2);
-      border-radius: 16px;
-      box-shadow: 0 0 20px rgba(10, 180, 255, 0.3);
-      touch-action: none;
+      display: block;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: linear-gradient(#0f1736, #0a1024);
     }
 
-    .overlay {
+    .screen {
       position: absolute;
       inset: 0;
       display: flex;
@@ -99,441 +74,376 @@
       justify-content: center;
       flex-direction: column;
       gap: 12px;
-      background: rgba(0, 0, 0, 0.6);
-      color: #baf5ff;
-      font-size: 18px;
       text-align: center;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.3s ease;
+      background: rgba(4, 7, 16, 0.75);
+      backdrop-filter: blur(2px);
+      border-radius: 12px;
+      padding: 16px;
     }
 
-    .overlay.visible {
-      opacity: 1;
-      pointer-events: all;
+    .hidden { display: none; }
+
+    h1, h2, p { margin: 0; }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #0a0f24;
+      font-weight: 700;
+      padding: 10px 18px;
+      cursor: pointer;
     }
 
-    .overlay span {
-      font-size: 32px;
-      font-weight: bold;
-      text-shadow: 0 0 8px rgba(10, 240, 255, 0.8);
-    }
-
-    .canvas-container {
-      position: relative;
-      width: 100%;
-    }
-
-    .tips {
-      font-size: 12px;
-      color: rgba(186, 245, 255, 0.7);
-      text-align: center;
-      max-width: 480px;
-      line-height: 1.6;
+    .legend {
+      margin-top: 10px;
+      opacity: 0.9;
+      font-size: 14px;
+      line-height: 1.5;
     }
   </style>
 </head>
 <body>
-  <div class="game-wrapper">
-    <h1>霓虹雨躲避战</h1>
-    <div class="hud">
-      <div>分数：<span id="score">0</span></div>
-      <div>最高分：<span id="highScore">0</span></div>
-      <div>难度等级：<span id="level">1</span></div>
-      <div>状态：<span id="status">待开始</span></div>
-    </div>
-    <div class="controls">
-      <button id="startBtn">开始 / 重开</button>
-      <button id="pauseBtn">暂停</button>
-      <button id="soundBtn">音效：开</button>
-    </div>
-    <div class="canvas-container" id="touchArea">
-      <canvas id="gameCanvas" width="640" height="960"></canvas>
-      <div class="overlay" id="overlay">
-        <span id="overlayTitle">霓虹雨躲避战</span>
-        <div id="overlayInfo">点击开始迎接霓虹风暴！</div>
+  <main class="game-shell">
+    <section class="hud">
+      <div class="card">⏳ Time: <span id="time">90</span>s</div>
+      <div class="card">📘 Progress: <span id="progress">0</span>%</div>
+      <div class="card">🧠 Focus: <span id="focus">100</span></div>
+      <div class="card">💬 <span id="status">Ready to study!</span></div>
+    </section>
+
+    <div class="canvas-wrap">
+      <canvas id="game" width="900" height="520"></canvas>
+
+      <div id="startScreen" class="screen">
+        <h1>📚 Deadline Dash</h1>
+        <p>Collect helpful items, dodge distractions, and finish your assignment before time runs out.</p>
+        <button id="startBtn">Start Game</button>
+      </div>
+
+      <div id="endScreen" class="screen hidden">
+        <h2 id="endTitle">Result</h2>
+        <p id="endText"></p>
+        <button id="restartBtn">Restart</button>
       </div>
     </div>
-    <div class="tips">
-      键盘方向键或 WASD 控制移动，P 键暂停/继续。<br />
-      触屏设备：长按左半屏向左移动，右半屏向右移动。<br />
-      每 10 秒霓虹雨会更猛烈，小心别被击中！
-    </div>
-  </div>
+
+    <p class="legend">
+      Move with <strong>WASD</strong> or <strong>Arrow Keys</strong>. Items: ☕ speed boost, 📘 +10% progress, 💡 +20% progress, 🛌 +15 focus.
+      Hazards: 📱 -15 focus, 👾 monster drains 8 seconds on touch, 🥱 burnout zone slows movement.
+    </p>
+  </main>
+
   <script>
-    // ====== 游戏基础变量与对象 ======
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const scoreEl = document.getElementById('score');
-    const highScoreEl = document.getElementById('highScore');
-    const levelEl = document.getElementById('level');
-    const statusEl = document.getElementById('status');
-    const overlay = document.getElementById('overlay');
-    const overlayTitle = document.getElementById('overlayTitle');
-    const overlayInfo = document.getElementById('overlayInfo');
-    const startBtn = document.getElementById('startBtn');
-    const pauseBtn = document.getElementById('pauseBtn');
-    const soundBtn = document.getElementById('soundBtn');
-    const touchArea = document.getElementById('touchArea');
+    // ===== Core setup and game state =====
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
 
-    const highScoreKey = 'neon-rain-dodger-highscore';
-
-    const player = {
-      size: 36,
-      x: canvas.width / 2,
-      y: canvas.height - 120,
-      speed: 320,
-      color: '#0af0ff'
+    const hud = {
+      time: document.getElementById("time"),
+      progress: document.getElementById("progress"),
+      focus: document.getElementById("focus"),
+      status: document.getElementById("status")
     };
 
-    let obstacles = [];
+    const screens = {
+      start: document.getElementById("startScreen"),
+      end: document.getElementById("endScreen"),
+      endTitle: document.getElementById("endTitle"),
+      endText: document.getElementById("endText")
+    };
+
     const keys = {};
-    let running = false;
-    let paused = false;
+    const world = { w: canvas.width, h: canvas.height };
+
+    let player, items, hazards, burnoutZone, monster;
+    let gameActive = false;
     let lastTime = 0;
-    let elapsed = 0; // 存活时间（秒）
-    let spawnTimer = 0;
-    const baseSpawnInterval = 1.2;
-    const baseObstacleSpeed = 220;
-    let animationId = null;
+    let itemSpawnTimer = 0;
+    let hazardSpawnTimer = 0;
 
-    // 触控状态
-    let touchLeftActive = false;
-    let touchRightActive = false;
+    // ===== Game balancing constants =====
+    const ITEM_SPAWN_EVERY = 1.4;
+    const HAZARD_SPAWN_EVERY = 2.2;
+    const PLAYER_RADIUS = 16;
 
-    // 音效系统（使用 WebAudio API 生成简单哔声）
-    let audioEnabled = true;
-    let audioContext = null;
+    // ===== Helpers =====
+    const rand = (min, max) => Math.random() * (max - min) + min;
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-    let highScore = Number(localStorage.getItem(highScoreKey) || 0);
-    highScoreEl.textContent = highScore;
-
-    function initAudio() {
-      if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (audioContext.state === 'suspended') {
-        audioContext.resume();
-      }
+    function circleHit(a, b) {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return Math.hypot(dx, dy) < a.r + b.r;
     }
 
-    function playBeep(frequency = 440, duration = 0.15, type = 'sine', gainValue = 0.1) {
-      if (!audioEnabled) return;
-      initAudio();
-      const osc = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      osc.type = type;
-      osc.frequency.value = frequency;
-      gain.gain.value = gainValue;
-      osc.connect(gain);
-      gain.connect(audioContext.destination);
-      osc.start();
-      osc.stop(audioContext.currentTime + duration);
+    function setStatus(msg) {
+      hud.status.textContent = msg;
     }
 
-    // ====== 游戏控制函数 ======
-    function showOverlay(title, info) {
-      overlayTitle.textContent = title;
-      overlayInfo.textContent = info;
-      overlay.classList.add('visible');
-    }
+    // ===== Reset + start =====
+    function resetGame() {
+      player = {
+        x: world.w / 2,
+        y: world.h / 2,
+        r: PLAYER_RADIUS,
+        speed: 220,
+        focus: 100,
+        progress: 0,
+        timeLeft: 90,
+        speedBoostUntil: 0,
+        monsterHitCooldown: 0
+      };
 
-    function hideOverlay() {
-      overlay.classList.remove('visible');
-    }
+      items = [];
+      hazards = [];
+      itemSpawnTimer = 0;
+      hazardSpawnTimer = 0;
 
-    function prepareNewRun() {
-      player.x = canvas.width / 2;
-      player.y = canvas.height - 120;
-      obstacles = [];
-      elapsed = 0;
-      spawnTimer = 0;
-      lastTime = performance.now();
-      updateHUD();
+      burnoutZone = {
+        x: rand(160, world.w - 160),
+        y: rand(120, world.h - 120),
+        w: 190,
+        h: 130
+      };
+
+      monster = {
+        x: rand(50, world.w - 50),
+        y: rand(50, world.h - 50),
+        r: 20,
+        speed: 85
+      };
+
+      setStatus("You can do this. Stay focused!");
+      updateHud();
     }
 
     function startGame() {
-      if (animationId) {
-        cancelAnimationFrame(animationId);
-        animationId = null;
-      }
-      prepareNewRun();
-      initAudio();
-      running = true;
-      paused = false;
-      statusEl.textContent = '战斗中';
-      pauseBtn.textContent = '暂停';
-      hideOverlay();
-      playBeep(660, 0.2, 'sawtooth', 0.07);
-      animationId = requestAnimationFrame(loop);
+      resetGame();
+      gameActive = true;
+      screens.start.classList.add("hidden");
+      screens.end.classList.add("hidden");
+      lastTime = performance.now();
+      requestAnimationFrame(loop);
     }
 
-    function endGame() {
-      running = false;
-      paused = false;
-      pauseBtn.textContent = '暂停';
-      statusEl.textContent = '任务失败';
-      showOverlay('躲避失败', `存活 ${Math.floor(elapsed)} 秒，点击重新挑战！`);
-      if (Math.floor(elapsed) > highScore) {
-        highScore = Math.floor(elapsed);
-        localStorage.setItem(highScoreKey, highScore);
-        highScoreEl.textContent = highScore;
-      }
-      playBeep(180, 0.3, 'triangle', 0.12);
+    // ===== Spawning logic =====
+    function spawnItem() {
+      const types = ["coffee", "book", "idea", "rest"];
+      const type = types[Math.floor(Math.random() * types.length)];
+
+      items.push({
+        type,
+        x: rand(26, world.w - 26),
+        y: rand(26, world.h - 26),
+        r: 14
+      });
     }
 
-    function togglePause() {
-      if (!running) return;
-      paused = !paused;
-      statusEl.textContent = paused ? '暂停' : '战斗中';
-      pauseBtn.textContent = paused ? '继续' : '暂停';
-      if (!paused) {
-        lastTime = performance.now();
-        animationId = requestAnimationFrame(loop);
-      }
+    function spawnHazard() {
+      hazards.push({
+        type: "phone",
+        x: rand(26, world.w - 26),
+        y: rand(26, world.h - 26),
+        r: 16
+      });
     }
 
-    function toggleSound() {
-      audioEnabled = !audioEnabled;
-      soundBtn.textContent = audioEnabled ? '音效：开' : '音效：关';
-      if (audioEnabled) {
-        playBeep(520, 0.12, 'square', 0.05);
-      }
-    }
+    // ===== Input + movement =====
+    function movePlayer(dt) {
+      let dx = 0, dy = 0;
+      if (keys["w"] || keys["arrowup"]) dy -= 1;
+      if (keys["s"] || keys["arrowdown"]) dy += 1;
+      if (keys["a"] || keys["arrowleft"]) dx -= 1;
+      if (keys["d"] || keys["arrowright"]) dx += 1;
 
-    function updateHUD() {
-      scoreEl.textContent = Math.floor(elapsed);
-      highScoreEl.textContent = highScore;
-      levelEl.textContent = Math.max(1, Math.floor(elapsed / 10) + 1);
-    }
-
-    function drawIdleScene() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      gradient.addColorStop(0, 'rgba(10, 20, 40, 0.95)');
-      gradient.addColorStop(1, 'rgba(0, 0, 10, 0.9)');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.fillStyle = 'rgba(10, 180, 255, 0.15)';
-      for (let i = 0; i < 80; i++) {
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        const r = Math.random() * 2 + 0.5;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fill();
+      if (dx !== 0 || dy !== 0) {
+        const len = Math.hypot(dx, dy);
+        dx /= len;
+        dy /= len;
       }
 
-      ctx.fillStyle = player.color;
-      ctx.shadowColor = '#0af0ff';
-      ctx.shadowBlur = 20;
-      ctx.fillRect(player.x - player.size / 2, player.y - player.size / 2, player.size, player.size);
-      ctx.shadowBlur = 0;
+      const now = performance.now() / 1000;
+      let speed = player.speed;
+      if (now < player.speedBoostUntil) speed *= 1.6;
 
-      ctx.fillStyle = 'rgba(10, 180, 255, 0.7)';
-      ctx.font = '24px "Segoe UI", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('准备迎战霓虹风暴', canvas.width / 2, canvas.height / 2);
+      // Burnout zone slows the player while inside.
+      const insideBurnout = player.x > burnoutZone.x && player.x < burnoutZone.x + burnoutZone.w &&
+        player.y > burnoutZone.y && player.y < burnoutZone.y + burnoutZone.h;
+      if (insideBurnout) speed *= 0.55;
+
+      player.x = clamp(player.x + dx * speed * dt, player.r, world.w - player.r);
+      player.y = clamp(player.y + dy * speed * dt, player.r, world.h - player.r);
     }
 
-    // ====== 游戏更新循环 ======
-    function loop(timestamp) {
-      if (!running || paused) {
-        animationId = null;
+    // ===== Collision handling for items and hazards =====
+    function handleCollisions() {
+      for (let i = items.length - 1; i >= 0; i--) {
+        const it = items[i];
+        if (!circleHit(player, it)) continue;
+
+        if (it.type === "coffee") {
+          player.speedBoostUntil = performance.now() / 1000 + 5;
+          setStatus("☕ Coffee kick! Speed boosted for 5s.");
+        } else if (it.type === "book") {
+          player.progress = clamp(player.progress + 10, 0, 100);
+          setStatus("📘 Good reading session! +10% progress.");
+        } else if (it.type === "idea") {
+          player.progress = clamp(player.progress + 20, 0, 100);
+          setStatus("💡 Breakthrough idea! +20% progress.");
+        } else if (it.type === "rest") {
+          player.focus = clamp(player.focus + 15, 0, 100);
+          setStatus("🛌 Quick rest helped. +15 focus.");
+        }
+
+        items.splice(i, 1);
+      }
+
+      for (let i = hazards.length - 1; i >= 0; i--) {
+        const hz = hazards[i];
+        if (!circleHit(player, hz)) continue;
+        player.focus = clamp(player.focus - 15, 0, 100);
+        setStatus("📱 Distracted by your phone! -15 focus.");
+        hazards.splice(i, 1);
+      }
+    }
+
+    // ===== Monster AI =====
+    function updateMonster(dt) {
+      const dx = player.x - monster.x;
+      const dy = player.y - monster.y;
+      const len = Math.hypot(dx, dy) || 1;
+      monster.x += (dx / len) * monster.speed * dt;
+      monster.y += (dy / len) * monster.speed * dt;
+
+      player.monsterHitCooldown = Math.max(0, player.monsterHitCooldown - dt);
+      if (circleHit(player, monster) && player.monsterHitCooldown <= 0) {
+        player.timeLeft = Math.max(0, player.timeLeft - 8);
+        player.monsterHitCooldown = 1.0;
+
+        // Push player away from monster contact.
+        const push = 38;
+        player.x = clamp(player.x + (dx / len) * push, player.r, world.w - player.r);
+        player.y = clamp(player.y + (dy / len) * push, player.r, world.h - player.r);
+
+        setStatus("👾 Procrastination attack! -8 seconds.");
+      }
+    }
+
+    // ===== Rendering =====
+    function draw() {
+      ctx.clearRect(0, 0, world.w, world.h);
+
+      // Background playfield accents.
+      ctx.fillStyle = "rgba(125, 211, 252, 0.06)";
+      for (let i = 0; i < 18; i++) {
+        ctx.fillRect((i * 57) % world.w, (i * 87) % world.h, 2, 2);
+      }
+
+      // Burnout zone visual.
+      ctx.fillStyle = "rgba(248, 113, 113, 0.26)";
+      ctx.fillRect(burnoutZone.x, burnoutZone.y, burnoutZone.w, burnoutZone.h);
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      ctx.font = "14px sans-serif";
+      ctx.fillText("🥱 Burnout Zone", burnoutZone.x + 10, burnoutZone.y + 22);
+
+      // Draw items.
+      const itemEmoji = { coffee: "☕", book: "📘", idea: "💡", rest: "🛌" };
+      ctx.font = "22px sans-serif";
+      items.forEach((it) => ctx.fillText(itemEmoji[it.type], it.x - 11, it.y + 7));
+
+      // Draw hazards.
+      ctx.font = "24px sans-serif";
+      hazards.forEach((h) => ctx.fillText("📱", h.x - 12, h.y + 8));
+
+      // Monster.
+      ctx.font = "30px sans-serif";
+      ctx.fillText("👾", monster.x - 15, monster.y + 10);
+
+      // Player.
+      ctx.beginPath();
+      ctx.fillStyle = "#7dd3fc";
+      ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = "23px sans-serif";
+      ctx.fillText("🎓", player.x - 13, player.y + 8);
+    }
+
+    function updateHud() {
+      hud.time.textContent = Math.ceil(player.timeLeft);
+      hud.progress.textContent = Math.floor(player.progress);
+      hud.focus.textContent = Math.floor(player.focus);
+
+      hud.focus.style.color = player.focus < 35 ? "#f87171" : "#e7ecff";
+      hud.time.style.color = player.timeLeft < 15 ? "#fbbf24" : "#e7ecff";
+    }
+
+    // ===== Win/Lose checks + screens =====
+    function endGame(win, message) {
+      gameActive = false;
+      screens.end.classList.remove("hidden");
+      screens.endTitle.textContent = win ? "🎉 You Submitted On Time!" : "💥 Deadline Missed";
+      screens.endText.textContent = message;
+      setStatus(win ? "Mission complete!" : "Try a smarter study run.");
+    }
+
+    // ===== Main game loop =====
+    function loop(ts) {
+      if (!gameActive) return;
+      const dt = Math.min(0.033, (ts - lastTime) / 1000);
+      lastTime = ts;
+
+      player.timeLeft = Math.max(0, player.timeLeft - dt);
+
+      itemSpawnTimer += dt;
+      hazardSpawnTimer += dt;
+      if (itemSpawnTimer >= ITEM_SPAWN_EVERY) {
+        itemSpawnTimer = 0;
+        if (items.length < 9) spawnItem();
+      }
+      if (hazardSpawnTimer >= HAZARD_SPAWN_EVERY) {
+        hazardSpawnTimer = 0;
+        if (hazards.length < 7) spawnHazard();
+      }
+
+      movePlayer(dt);
+      updateMonster(dt);
+      handleCollisions();
+
+      draw();
+      updateHud();
+
+      if (player.progress >= 100) {
+        endGame(true, "You reached 100% assignment progress with time to spare.");
         return;
       }
-      const delta = Math.min((timestamp - lastTime) / 1000, 1 / 30); // 控制最大时间步，保持稳定
-      lastTime = timestamp;
+      if (player.focus <= 0) {
+        endGame(false, "You ran out of focus. Too many distractions!");
+        return;
+      }
+      if (player.timeLeft <= 0) {
+        endGame(false, "Time hit zero before your assignment was finished.");
+        return;
+      }
 
-      update(delta);
-      render();
-      animationId = requestAnimationFrame(loop);
+      requestAnimationFrame(loop);
     }
 
-    function update(delta) {
-      elapsed += delta;
-      updateHUD();
-
-      const level = Math.max(0, Math.floor(elapsed / 10));
-
-      // 玩家移动：键盘 + 触摸
-      const moveX = (keys['ArrowLeft'] || keys['KeyA'] || touchLeftActive ? -1 : 0) +
-                    (keys['ArrowRight'] || keys['KeyD'] || touchRightActive ? 1 : 0);
-      const moveY = (keys['ArrowUp'] || keys['KeyW'] ? -1 : 0) +
-                    (keys['ArrowDown'] || keys['KeyS'] ? 1 : 0);
-
-      const magnitude = Math.hypot(moveX, moveY) || 1; // 归一化斜向速度
-      player.x += (moveX / magnitude) * player.speed * delta;
-      player.y += (moveY / magnitude) * player.speed * delta;
-
-      const half = player.size / 2;
-      player.x = Math.max(half, Math.min(canvas.width - half, player.x));
-      player.y = Math.max(half, Math.min(canvas.height - half, player.y));
-
-      // 生成障碍物，随难度减少间隔并增加数量
-      const spawnInterval = Math.max(0.35, baseSpawnInterval - level * 0.1);
-      spawnTimer += delta;
-      while (spawnTimer >= spawnInterval) {
-        spawnTimer -= spawnInterval;
-        const count = 1 + Math.floor(level / 2);
-        for (let i = 0; i < count; i++) {
-          spawnObstacle(level);
-        }
-      }
-
-      // 更新障碍物
-      for (let i = obstacles.length - 1; i >= 0; i--) {
-        const o = obstacles[i];
-        o.y += o.speed * delta;
-        if (o.y > canvas.height + 50) {
-          obstacles.splice(i, 1);
-          continue;
-        }
-        if (checkCollision(o)) {
-          endGame();
-          break;
-        }
-      }
-    }
-
-    function spawnObstacle(level) {
-      const width = 40 + Math.random() * 30 + level * 4;
-      const height = 30 + Math.random() * 40 + level * 5;
-      const x = Math.random() * (canvas.width - width);
-      const speed = baseObstacleSpeed + level * 40 + Math.random() * (40 + level * 20);
-      obstacles.push({
-        x,
-        y: -height,
-        width,
-        height,
-        speed,
-        opacity: 0.4 + Math.random() * 0.4
-      });
-    }
-
-    function checkCollision(obstacle) {
-      const half = player.size / 2;
-      const px = player.x - half;
-      const py = player.y - half;
-      const pw = player.size;
-      const ph = player.size;
-      return px < obstacle.x + obstacle.width &&
-             px + pw > obstacle.x &&
-             py < obstacle.y + obstacle.height &&
-             py + ph > obstacle.y;
-    }
-
-    function render() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      gradient.addColorStop(0, 'rgba(10, 20, 40, 0.95)');
-      gradient.addColorStop(1, 'rgba(0, 0, 10, 0.9)');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // 绘制霓虹雨障碍
-      obstacles.forEach((o) => {
-        ctx.fillStyle = `rgba(10, 200, 255, ${o.opacity})`;
-        ctx.fillRect(o.x, o.y, o.width, o.height);
-        ctx.strokeStyle = 'rgba(10, 250, 255, 0.6)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(o.x, o.y, o.width, o.height);
-      });
-
-      // 绘制玩家方块
-      ctx.fillStyle = player.color;
-      ctx.shadowColor = '#0af0ff';
-      ctx.shadowBlur = 20;
-      ctx.fillRect(player.x - player.size / 2, player.y - player.size / 2, player.size, player.size);
-      ctx.shadowBlur = 0;
-
-      // 底部发光线，增强速度感
-      ctx.strokeStyle = 'rgba(10, 120, 255, 0.2)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(0, player.y + player.size / 2 + 20);
-      ctx.lineTo(canvas.width, player.y + player.size / 2 + 20);
-      ctx.stroke();
-    }
-
-    // ====== 输入与事件监听 ======
-    document.addEventListener('keydown', (e) => {
-      keys[e.code] = true;
-      if (e.code === 'KeyP') {
-        togglePause();
-      }
-      if (e.code === 'Space' && !running) {
-        startGame();
-      }
+    // ===== Event listeners =====
+    window.addEventListener("keydown", (e) => {
+      keys[e.key.toLowerCase()] = true;
     });
 
-    document.addEventListener('keyup', (e) => {
-      keys[e.code] = false;
+    window.addEventListener("keyup", (e) => {
+      keys[e.key.toLowerCase()] = false;
     });
 
-    startBtn.addEventListener('click', () => {
-      if (running) {
-        running = false;
-      }
-      startGame();
-    });
+    document.getElementById("startBtn").addEventListener("click", startGame);
+    document.getElementById("restartBtn").addEventListener("click", startGame);
 
-    pauseBtn.addEventListener('click', () => {
-      togglePause();
-    });
-
-    soundBtn.addEventListener('click', () => {
-      toggleSound();
-    });
-
-    overlay.addEventListener('click', () => {
-      if (!running) {
-        startGame();
-      }
-    });
-
-    // 触摸控制：左右半区分别移动
-    function updateTouchStates(touches) {
-      touchLeftActive = false;
-      touchRightActive = false;
-      const rect = canvas.getBoundingClientRect();
-      const mid = rect.left + rect.width / 2;
-      for (const touch of touches) {
-        if (touch.clientX < mid) {
-          touchLeftActive = true;
-        } else {
-          touchRightActive = true;
-        }
-      }
-    }
-
-    touchArea.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      initAudio();
-      updateTouchStates(e.touches);
-    }, { passive: false });
-
-    touchArea.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      updateTouchStates(e.touches);
-    }, { passive: false });
-
-    touchArea.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      updateTouchStates(e.touches);
-    }, { passive: false });
-
-    touchArea.addEventListener('touchcancel', (e) => {
-      e.preventDefault();
-      updateTouchStates(e.touches);
-    }, { passive: false });
-
-    // 初始静态界面
-    statusEl.textContent = '待开始';
-    drawIdleScene();
-    showOverlay('霓虹雨躲避战', '点击开始迎接霓虹风暴！');
+    // Draw initial frame behind start screen.
+    resetGame();
+    draw();
   </script>
 </body>
 </html>
